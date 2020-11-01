@@ -116,6 +116,14 @@ reduce term = Res (reductions!!last) (size-1) reductions (removeLast redexes) wh
 lambdaTerm :: Parser Term
 lambdaTerm = lambdaAbstraction <|> lambdaApplication <|> simple
 
+numToAbs 0 = Abstraction "s" (Abstraction "z" (Var "z"))
+numToAbs 1 = Abstraction "s" (Abstraction "z" (Application (Var "s") (Var "z")))
+numToAbs x = Abstraction "s" (Abstraction "z" (applicationLoop x))
+applicationLoop 1 = Application (Var "s") (Var "z")
+applicationLoop x = Application (Var "s") (applicationLoop (x - 1))
+
+ops '+' = Abstraction "w" (Abstraction "y" (Abstraction "x" (Application (Var "y") (Application (Application (Var "w") (Var "y")) (Var "x")))))
+
 lambdaAbstraction :: Parser Term
 lambdaAbstraction = do
     char '\\'
@@ -130,7 +138,7 @@ lambdaApplication = do
     return(foldl1 Application apps)
 
 simple :: Parser Term
-simple = lambdaVar <|> paren
+simple = lambdaVar <|> paren <|> op <|> cnumber 
 
 lambdaVar :: Parser Term
 lambdaVar = do
@@ -144,6 +152,20 @@ paren = do
     char ')'
     return term
 
+cnumber :: Parser Term
+cnumber = do
+    char '['
+    num <- digit
+    char ']'
+    return(numToAbs (read [num] :: Integer))
+
+op :: Parser Term
+op = do
+    char '<'
+    op <- anyChar
+    char '>'
+    return(ops '+')
+
 myparse :: String -> Term
 myparse str = case (parse lambdaTerm "" str) of
     Left msg -> error $ show msg
@@ -151,6 +173,11 @@ myparse str = case (parse lambdaTerm "" str) of
 
 test = myparse "\\z.(\\f.\\x.fzx)(\\y.y)"
 pair = myparse "\\x.\\y.\\z.zxy"
+modTest = myparse "[2]"
+modTest2 = myparse "[11]"
+modTest3 = myparse "[0]"
+modTest4 = myparse "[1]"
+modTest5 = myparse "[-2]"
 
 
 -------------------------------------- PRETTY PRINT --------------------------------------
